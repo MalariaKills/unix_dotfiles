@@ -1,0 +1,15 @@
+[Desktops]
+Id_1=d8589e04-8489-46d0-91e6-a4139c5b10f8
+Number=1
+Rows=1
+
+[Tiling]
+padding=4
+
+[Tiling][72b2ecf6-2f0e-5674-8cd7-8f6a4fcd852b]
+tiles={"layoutDirection":"horizontal","tiles":[{"width":0.25},{"width":0.5},{"width":0.25}]}
+
+[org.kde.kdecoration2]
+NoPlugin=false
+library=org.kde.breeze
+theme=Breeze
