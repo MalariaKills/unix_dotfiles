@@ -1,0 +1,84 @@
+---
+- name: Set up unix_dotfiles
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    dotfiles_home: "{{ ansible_env.HOME }}"
+    packages:
+      - zsh
+      - ghostty
+      - fastfetch
+      - neovim
+      - git
+      - base-devel
+      - eza
+      - bat
+      - fzf
+      - zoxide
+      - ripgrep
+      - fd
+      - unzip
+      - ttf-jetbrains-mono-nerd
+
+  tasks:
+    - name: Install packages
+      become: true
+      community.general.pacman:
+        name: "{{ packages }}"
+        state: present
+      tags: [system, packages]
+
+    - name: Set zsh as login shell
+      become: true
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        shell: /usr/bin/zsh
+      tags: [system, shell]
+
+    - name: Create config directories
+      ansible.builtin.file:
+        path: "{{ dotfiles_home }}/.config/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - ghostty
+        - fastfetch
+      tags: [config]
+
+    - name: Copy zsh config
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/zsh/.zshrc"
+        dest: "{{ dotfiles_home }}/.zshrc"
+      tags: [config]
+
+    - name: Copy ghostty config
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/ghostty/config"
+        dest: "{{ dotfiles_home }}/.config/ghostty/config"
+      tags: [config]
+
+    - name: Copy fastfetch config
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/fastfetch/config.jsonc"
+        dest: "{{ dotfiles_home }}/.config/fastfetch/config.jsonc"
+      tags: [config]
+
+    - name: Copy neovim (LazyVim) config
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/nvim/"
+        dest: "{{ dotfiles_home }}/.config/nvim/"
+      tags: [config]
+
+    - name: Install LazyVim plugins
+      ansible.builtin.command:
+        argv:
+          - nvim
+          - --headless
+          - "+Lazy! sync"
+          - +qa
+        creates: "{{ dotfiles_home }}/.local/share/nvim/lazy/lazy.nvim"
+      environment:
+        HOME: "{{ dotfiles_home }}"
+      tags: [config]
