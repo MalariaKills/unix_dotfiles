@@ -1,0 +1,5 @@
+# Ghostty's window-save-state (remember size across restarts) is macOS-only
+# and has no effect on Linux, so a fixed comfortable default size is used
+# for every new window instead. Units are columns x rows, not pixels.
+window-width = 120
+window-height = 35
