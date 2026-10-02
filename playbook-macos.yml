@@ -48,9 +48,10 @@
       - font-jetbrains-mono-nerd-font
 
     # Extra packages for the self-hosting Mac mini (installed only with --tags server).
-    # Ollama runs natively so it can use the Metal GPU; OrbStack replaces Docker Desktop.
+    # OrbStack replaces Docker Desktop. Odysseus serves models itself through a
+    # Metal-enabled llama.cpp (installed by its start-macos.sh), so no Ollama.
     server_formulae:
-      - ollama
+      - tmux
     server_casks:
       - orbstack
 
@@ -174,12 +175,6 @@
       community.general.homebrew_cask:
         name: "{{ server_casks }}"
         state: present
-      tags: [never, server]
-
-    - name: Run Ollama as a background service (starts at login)
-      ansible.builtin.command: "{{ brew_prefix }}/bin/brew services start ollama"
-      register: ollama_service
-      changed_when: "'Successfully started' in ollama_service.stdout"
       tags: [never, server]
 
     # Never sleep, restart after a power failure, wake on network access.
