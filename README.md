@@ -1,8 +1,17 @@
 # unix_dotfiles
 
-Personal dotfiles for CachyOS/Arch: zsh, Ghostty, fastfetch, and Neovim (LazyVim).
+Personal dotfiles for CachyOS/Arch and macOS: zsh, Ghostty, fastfetch, and Neovim (LazyVim).
+
+| OS | Playbook | Package manager |
+| --- | --- | --- |
+| CachyOS / Arch | `playbook.yml` | pacman |
+| macOS (Apple Silicon or Intel) | `playbook-macos.yml` | Homebrew |
+
+Both playbooks copy the same dotfiles and use the same tags.
 
 ## Automatic setup (Ansible)
+
+### CachyOS / Arch
 
 ```
 sudo pacman -S ansible git
@@ -10,6 +19,22 @@ git clone https://github.com/MalariaKills/unix_dotfiles ~/.dotfiles
 cd ~/.dotfiles
 ansible-playbook playbook.yml -K
 ```
+
+### macOS
+
+Install [Homebrew](https://brew.sh) first (it also installs the Xcode Command Line Tools, which provide `git`), then:
+
+```
+brew install ansible
+ansible-galaxy collection install community.general
+git clone https://github.com/MalariaKills/unix_dotfiles ~/.dotfiles
+cd ~/.dotfiles
+ansible-playbook playbook-macos.yml -K
+```
+
+The playbook stops with a clear message if Homebrew isn't installed.
+
+### Both
 
 `-K` prompts for your sudo password (needed to install packages and change your login shell).
 
@@ -19,12 +44,39 @@ This runs everything in the Manual section below in one go. Useful tags if you d
 - `--tags packages` — only install the packages
 - `--skip-tags system` — skip package install and shell change, just refresh configs
 
+### macOS server mode
+
+`playbook-macos.yml` has an extra `server` tag for an always-on, headless Mac (e.g. a Mac mini running self-hosted apps). It never runs unless you ask for it:
+
+```
+ansible-playbook playbook-macos.yml -K --tags all,server   # everything, plus server setup
+ansible-playbook playbook-macos.yml -K --tags server       # server setup only
+```
+
+It:
+
+- Installs [OrbStack](https://orbstack.dev) (lighter replacement for Docker Desktop) and [Ollama](https://ollama.com), and runs Ollama as a background service
+- Disables sleep, restarts after a power failure or a system freeze, and enables wake on network access
+- Turns off sending crash and usage analytics to Apple
+- Stops apps from reopening after a reboot
+
+It deliberately does **not** touch iCloud, FileVault, auto-login, or uninstall Docker Desktop. Make those calls by hand, and migrate your containers to OrbStack before removing Docker Desktop.
+
 ## Manual setup
 
 ### 1. Install packages
 
+**CachyOS / Arch:**
+
 ```
 sudo pacman -S zsh ghostty fastfetch neovim git base-devel eza bat fzf zoxide ripgrep fd unzip ttf-jetbrains-mono-nerd
+```
+
+**macOS** (zsh, git, and build tools come with macOS and the Xcode Command Line Tools):
+
+```
+brew install fastfetch neovim eza bat fzf zoxide ripgrep fd
+brew install --cask ghostty font-jetbrains-mono-nerd-font
 ```
 
 ### 2. Clone this repo
@@ -43,6 +95,12 @@ cp ~/.dotfiles/fastfetch/config.jsonc ~/.config/fastfetch/config.jsonc
 cp -r ~/.dotfiles/nvim/. ~/.config/nvim/
 ```
 
+On macOS, switch fastfetch to the Mac logo:
+
+```
+sed -i '' 's/"CachyOS_small"/"macos_small"/' ~/.config/fastfetch/config.jsonc
+```
+
 ### 4. Install LazyVim's plugins
 
 ```
@@ -51,9 +109,13 @@ nvim --headless "+Lazy! sync" +qa
 
 ### 5. Make zsh your login shell
 
+**CachyOS / Arch:**
+
 ```
 chsh -s /usr/bin/zsh
 ```
+
+**macOS:** zsh is already the default login shell. If you changed it, run `chsh -s /bin/zsh`.
 
 Log out and back in (or just open a new Ghostty window).
 
@@ -65,6 +127,7 @@ Log out and back in (or just open a new Ghostty window).
 
 ## Notes
 
-- The fastfetch config uses the small CachyOS logo (`CachyOS_small`). On a different distro, edit the `"source"` field in `fastfetch/config.jsonc`.
-- Ghostty can't remember window size across restarts on Linux, so `ghostty/config` sets a fixed 120x35 default instead.
-- The Ansible playbook was tested against an isolated fake `$HOME` before being committed, so it's safe to run on a fresh machine.
+- The fastfetch config uses the small CachyOS logo (`CachyOS_small`). The macOS playbook swaps it to `macos_small` automatically; on another distro, edit the `"source"` field in `fastfetch/config.jsonc`.
+- `.zshrc` loads Homebrew from `/opt/homebrew` when it exists, so the same file works on both systems.
+- Ghostty can't remember window size across restarts on Linux, so `ghostty/config` sets a fixed 120x35 default instead. macOS gets the same default.
+- The Arch playbook was tested against an isolated fake `$HOME` before being committed, so it's safe to run on a fresh machine. The macOS playbook passes Ansible's syntax check; do a first run with `--check` to preview its changes.
