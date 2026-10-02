@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/32980293/README.md)
+[README.md](https://github.com/user-attachments/files/32980416/README.md)
 # unix_dotfiles
 
 Personal dotfiles for CachyOS/Arch and macOS: zsh, Ghostty, fastfetch, and Neovim (LazyVim).
@@ -57,9 +57,18 @@ ansible-playbook playbook-macos.yml -K --tags server       # server setup only
 It:
 
 - Installs [OrbStack](https://orbstack.dev) (lighter replacement for Docker Desktop) and tmux
+- Clones [Odysseus](https://github.com/pewdiepie-archdaemon/odysseus) to `~/self-hosted/odysseus` (first run only) and runs it in the background with a launchd agent, so it starts at login and restarts if it crashes. Run just this part with `--tags odysseus`. Your Odysseus `.env` isn't managed by the playbook.
 - Disables sleep, restarts after a power failure or a system freeze, and enables wake on network access
 - Turns off sending crash and usage analytics to Apple
 - Stops apps from reopening after a reboot
+
+Odysseus everyday commands:
+
+```
+launchctl kickstart -k gui/$(id -u)/local.odysseus   # restart (e.g. after git pull)
+launchctl bootout gui/$(id -u)/local.odysseus        # stop
+tail -f ~/Library/Logs/odysseus.log                  # logs
+```
 
 It deliberately does **not** touch iCloud, FileVault, auto-login, or uninstall Docker Desktop. Make those calls by hand, and migrate your containers to OrbStack before removing Docker Desktop.
 
