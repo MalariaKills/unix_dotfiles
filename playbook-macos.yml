@@ -17,6 +17,7 @@
 #   --tags packages      only install Homebrew formulae and casks
 #   --skip-tags system   skip package installs and system settings
 #   --tags server        ONLY the headless-server settings (never runs unless asked)
+#   --tags odysseus      ONLY the Odysseus clone + launchd agent (part of `server`)
 #
 # Remote (from the MacBook control node): put the Mac mini in your inventory and
 # drop `hosts: localhost` / `connection: local` in favor of `hosts: macmini`.
@@ -54,6 +55,16 @@
       - tmux
     server_casks:
       - orbstack
+
+    # Odysseus runs natively (not in a container) so its models can use the Metal GPU.
+    # launchd keeps it running in the background: started at login, restarted on crash.
+    odysseus_dir: "{{ dotfiles_home }}/self-hosted/odysseus"
+    odysseus_repo: https://github.com/pewdiepie-archdaemon/odysseus.git
+    odysseus_branch: main
+    odysseus_label: local.odysseus
+    odysseus_plist: "{{ dotfiles_home }}/Library/LaunchAgents/{{ odysseus_label }}.plist"
+    odysseus_log: "{{ dotfiles_home }}/Library/Logs/odysseus.log"
+    launchd_domain: "gui/{{ ansible_user_uid }}"
 
   pre_tasks:
     - name: Make sure this is macOS
@@ -217,3 +228,77 @@
         type: bool
         value: false
       tags: [never, server]
+
+    # ---------------------------------------------------------------- odysseus
+    # Clones Odysseus on first run only (never pulls over your copy), then runs it
+    # as a launchd agent. Your .env is NOT managed here: it holds your own settings
+    # (APP_BIND, SEARXNG_INSTANCE, COMPANION_BASE_URL) and lives with the repo.
+    - name: Clone Odysseus
+      ansible.builtin.git:
+        repo: "{{ odysseus_repo }}"
+        dest: "{{ odysseus_dir }}"
+        version: "{{ odysseus_branch }}"
+        update: false
+      tags: [never, server, odysseus]
+
+    - name: Create LaunchAgents and Logs folders
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ dotfiles_home }}/Library/LaunchAgents"
+        - "{{ dotfiles_home }}/Library/Logs"
+      tags: [never, server, odysseus]
+
+    - name: Install the Odysseus launchd agent
+      ansible.builtin.copy:
+        dest: "{{ odysseus_plist }}"
+        mode: "0644"
+        content: |
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>Label</key><string>{{ odysseus_label }}</string>
+            <key>ProgramArguments</key>
+            <array>
+              <string>/bin/bash</string>
+              <string>{{ odysseus_dir }}/start-macos.sh</string>
+            </array>
+            <key>WorkingDirectory</key><string>{{ odysseus_dir }}</string>
+            <key>EnvironmentVariables</key>
+            <dict>
+              <key>PATH</key><string>{{ brew_prefix }}/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+              <key>ODYSSEUS_NO_OPEN</key><string>1</string>
+            </dict>
+            <key>RunAtLoad</key><true/>
+            <key>KeepAlive</key><true/>
+            <key>ThrottleInterval</key><integer>30</integer>
+            <key>StandardOutPath</key><string>{{ odysseus_log }}</string>
+            <key>StandardErrorPath</key><string>{{ odysseus_log }}</string>
+          </dict>
+          </plist>
+      notify: Reload Odysseus agent
+      tags: [never, server, odysseus]
+
+    - name: Check whether the Odysseus agent is loaded
+      ansible.builtin.command: launchctl print "{{ launchd_domain }}/{{ odysseus_label }}"
+      register: odysseus_loaded
+      changed_when: false
+      failed_when: false
+      tags: [never, server, odysseus]
+
+    - name: Load the Odysseus agent
+      ansible.builtin.command: launchctl bootstrap "{{ launchd_domain }}" "{{ odysseus_plist }}"
+      when: odysseus_loaded.rc != 0
+      tags: [never, server, odysseus]
+
+  handlers:
+    # Picks up an edited plist on a machine where the agent was already running.
+    - name: Reload Odysseus agent
+      ansible.builtin.shell: |
+        launchctl bootout "{{ launchd_domain }}/{{ odysseus_label }}" 2>/dev/null || true
+        sleep 2
+        launchctl bootstrap "{{ launchd_domain }}" "{{ odysseus_plist }}"
+      when: odysseus_loaded.rc | default(1) == 0
