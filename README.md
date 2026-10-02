@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/32980293/README.md)
 # unix_dotfiles
 
 Personal dotfiles for CachyOS/Arch and macOS: zsh, Ghostty, fastfetch, and Neovim (LazyVim).
@@ -55,7 +56,7 @@ ansible-playbook playbook-macos.yml -K --tags server       # server setup only
 
 It:
 
-- Installs [OrbStack](https://orbstack.dev) (lighter replacement for Docker Desktop) and [Ollama](https://ollama.com), and runs Ollama as a background service
+- Installs [OrbStack](https://orbstack.dev) (lighter replacement for Docker Desktop) and tmux
 - Disables sleep, restarts after a power failure or a system freeze, and enables wake on network access
 - Turns off sending crash and usage analytics to Apple
 - Stops apps from reopening after a reboot
